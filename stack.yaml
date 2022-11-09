@@ -1,0 +1,177 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Template for provisioning a webrtc media server and client
+
+Parameters:
+  AMI:
+    Type: String
+    Description: A Linux AMI to use. Keep the default when deploying in us-east-1
+    Default: ami-08c40ec9ead489470
+  Key:
+    Type: String
+    Description: They SSH key used to access the instance
+
+Resources:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: WebRTC Networking Demo VPC
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+  VPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+  SubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: us-east-1a
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.0.0/24
+      MapPublicIpOnLaunch: true
+  RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+  InternetRoute:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGateway
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+      RouteTableId: !Ref RouteTable
+  SubnetARouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref RouteTable
+      SubnetId: !Ref SubnetA
+  JanusServerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: "Janus Server Security Group"
+      GroupDescription: "HTTP, Websockets and RTP traffic to Janus"
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 8088
+          ToPort: 8088
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+  CoturnServerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties: 
+      GroupName: "Coturn Server Security Group"
+      GroupDescription: "STUN/TURN requests to coturn"
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3478
+          ToPort: 3478
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: udp
+          FromPort: 3478
+          ToPort: 3478
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+  JanusServerElasticIp:
+    Type: AWS::EC2:EIP
+    Properties:
+      Domain: vpc
+      InstanceId: !Ref JanusServer
+  CoturnServerElasticIp:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+  JanusServer:
+    Type: AWS::EC2::Instance
+    Properties:
+      SubnetId: !Ref SubnetA
+      ImageId: !Ref AMI
+      InstanceType: t2.micro
+      KeyName: !Ref Key
+      SecurityGroupIds:
+        - Ref: JanusServerSecurityGroup
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeSize: 10
+      Tags:
+        - Key: Name
+          Value: Janus Server - WebRTC Networking Demo
+  CoturnServer:
+    Type: AWS::EC2::Instance
+    Properties:
+      SubnetId: !Ref SubnetA
+      ImageId: !Ref AMI
+      InstanceType: t2.micro
+      KeyName: !Ref Key
+      SecurityGroupIds:
+        - Ref: CoturnServerSecurityGroup
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeSize: 10
+  AppBucket:
+    Type: 'AWS::S3::Bucket'
+  CloudfrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        CacheBehaviors:
+          - PathPattern: /janus
+            AllowedMethods:
+              - "GET"
+              - "HEAD"
+              - "OPTIONS"
+              - "PUT"
+              - "PATCH"
+              - "POST"
+              - "DELETE"
+            CachedMethods:
+              - "HEAD"
+              - "GET"
+            TargetOriginId: janus-server
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+            ViewerProtocolPolicy: redirect-to-https
+        DefaultCacheBehavior:
+          Compress: true
+          ForwardedValues:
+            QueryString: false
+          TargetOriginId: app-s3-bucket
+          ViewerProtocolPolicy: redirect-to-https
+        DefaultRootObject: index.html
+        CustomErrorResponses:
+          - ErrorCachingMinTTL: 300
+            ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+          - ErrorCachingMinTTL: 300
+            ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+        Enabled: true
+        HttpVersion: http2
+        Origins:
+          - DomainName: !Join ['', [!Ref AppBucket, '.s3.amazonaws.com']]
+            Id: app-s3-bucket
+            S3OriginConfig:
+              OriginAccessIdentity:
+                !Join ['', ['origin-access-identity/cloudfront/', !Ref CloudFrontOriginAccessIdentity]]
+        PriceClass: 'PriceClass_100'
