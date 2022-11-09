@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import Janus from './utils/janus';
 import { publishOwnFeed, publishToRoom } from './utils/publisher';
 
@@ -14,8 +14,7 @@ function JanusPublisher({
   setRemotePublishers,
   unsetRemotePublisher,
   publisherHandle,
-  setPublisherHandle,
-  children
+  setPublisherHandle
 }) {
   const videoArea = useRef(null);
   let mystream = null;
@@ -34,8 +33,8 @@ function JanusPublisher({
         }
         break;
       case 'publishers':
-        if (publishers && publishers.length > 0) {
-          setRemotePublishers(publishers);
+        if (data.publishers && data.publishers.length > 0) {
+          setRemotePublishers(data.publishers);
         }
         break;
       case 'onlocaltrack':
@@ -66,6 +65,7 @@ function JanusPublisher({
       username,
       callback
     })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [janus]);
 
   useEffect(() => {

@@ -1,14 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   JanusComponent,
   JanusPublisher,
+  JanusSubscriber,
   JanusVideoRoom
 } from '../vendor/react-janus';
 
 function VideoCall({janus, room, username, setInCall}) {
   const [pubId, setPubId] = useState(null);
   const [pubPvtId, setPubPvtId] = useState(null);
-  const [remotePublisher, setRemotePublisher] = useState(null);
   const [remotePublishers, setRemotePublishers] = useState([]);
   const [publisherHandle, setPublisherHandle] = useState(null);
 
@@ -26,7 +26,7 @@ function VideoCall({janus, room, username, setInCall}) {
             setPubPvtId={_pubPvtId => setPubPvtId(_pubPvtId)}
             setRemotePublishers={_remotePublishers => {
               _remotePublishers.forEach(newPublisher => {
-                setRemotePublishers(prevState => prevState.push(newPublisher))
+                setRemotePublishers(prevState => [...prevState, newPublisher])
               });
             }}
             unsetRemotePublisher={_remotePublisher => {
@@ -35,8 +35,13 @@ function VideoCall({janus, room, username, setInCall}) {
               )));
             }}
             publisherHandle={publisherHandle}
-            setPublisherHandle={_publisherHandle => setPublisherHandle(_publisherHandle)}>
-          </JanusPublisher>
+            setPublisherHandle={_publisherHandle => setPublisherHandle(_publisherHandle)}/>
+          <JanusSubscriber
+            opaqueId={username}
+            room={room}
+            pubId={pubId}
+            pubPvtId={pubPvtId}
+            remotePublishers={remotePublishers}/>
         </JanusVideoRoom>
       </JanusComponent>
     </>

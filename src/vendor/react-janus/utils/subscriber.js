@@ -83,7 +83,10 @@ export function subscribeRemoteFeed({
     onlocaltrack: function (stream) {
       // The subscriber stream is recvonly, we don't expect anything here
     },
-    onremotetrack: function (stream) {
+    onremotetrack: function (track) {
+      Janus.debug(' ::: Got a remote stream :::');
+      const stream = new window.MediaStream();
+      stream.addTrack(track.clone());
       callback(remoteFeed, remoteFeedIndex, 'onremotetrack', stream);
     },
     oncleanup: function () {
