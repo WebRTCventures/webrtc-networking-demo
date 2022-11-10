@@ -2,10 +2,6 @@ AWSTemplateFormatVersion: 2010-09-09
 Description: Template for provisioning a webrtc media server and client
 
 Parameters:
-  AMI:
-    Type: String
-    Description: A Linux AMI to use. Keep the default when deploying in us-east-1
-    Default: ami-08c40ec9ead489470
   Key:
     Type: String
     Description: They SSH key used to access the instance
@@ -99,11 +95,12 @@ Resources:
     Type: AWS::EC2::EIP
     Properties:
       Domain: vpc
+      InstanceId: !Ref CoturnServer
   JanusServer:
     Type: AWS::EC2::Instance
     Properties:
       SubnetId: !Ref SubnetA
-      ImageId: !Ref AMI
+      ImageId: ami-0ea98c194397a8df0
       InstanceType: t2.micro
       KeyName: !Ref Key
       SecurityGroupIds:
@@ -119,7 +116,7 @@ Resources:
     Type: AWS::EC2::Instance
     Properties:
       SubnetId: !Ref SubnetA
-      ImageId: !Ref AMI
+      ImageId: ami-0c8bdc775e3df207a
       InstanceType: t2.micro
       KeyName: !Ref Key
       SecurityGroupIds:
@@ -128,8 +125,43 @@ Resources:
         - DeviceName: /dev/xvda
           Ebs:
             VolumeSize: 10
+      Tags:
+        - Key: Name
+          Value: Coturn Server - WebRTC Networking Demo
+      UserData:
+        Fn::Base64: |
+          #!/bin/bash
+          IP_ADDRESS=$(curl http://169.254.169.254/latest/meta-data/public-ipv4)
+          sed -i "s/IP_ADDRESS/$IP_ADDRESS/" /etc/turnserver.conf
+          systemctl restart coturn
   AppBucket:
     Type: 'AWS::S3::Bucket'
+    DeletionPolicy: Retain
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      Tags:
+        - Key: Name
+          Value: Client App - WebRTC Networking Demo
+  BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref Bucket
+      PolicyDocument:
+        Statement:
+          - Action:
+              - s3:GetObject
+            Effect: Allow
+            Resource: !Join ['', ['arn:aws:s3:::', !Ref Bucket, '/*']]
+            Principal:
+              CanonicalUser: !GetAtt CloudFrontOriginAccessIdentity.S3CanonicalUserId
+  CloudFrontOriginAccessIdentity:
+    Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: !Sub 'CloudFront OAI for WebRTC Networking Demo'
   CloudfrontDistribution:
     Type: AWS::CloudFront::Distribution
     Properties:
@@ -174,4 +206,12 @@ Resources:
             S3OriginConfig:
               OriginAccessIdentity:
                 !Join ['', ['origin-access-identity/cloudfront/', !Ref CloudFrontOriginAccessIdentity]]
+          - DomainName: !Join ['', ['http://', !GetAtt JanusServer.PublicIp]]
+            Id: janus-server
+            CustomOriginConfig:
+              HTTPPort: 8088
+              OriginProtocolPolicy: 'http-only'
         PriceClass: 'PriceClass_100'
+      Tags:
+        - Key: Name
+          Value: CloudFrount Distribution - WebRTC Networking Demo
