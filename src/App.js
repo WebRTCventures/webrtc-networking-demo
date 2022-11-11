@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import './App.css';
-import { JanusComponent } from './vendor/react-janus';
 import VideoCall from './components/VideoCall';
 
 function App() {
