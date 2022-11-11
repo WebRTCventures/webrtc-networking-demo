@@ -36,7 +36,6 @@ Resources:
       VpcId: !Ref VPC
   InternetRoute:
     Type: AWS::EC2::Route
-    DependsOn: InternetGateway
     Properties:
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref InternetGateway
@@ -54,8 +53,28 @@ Resources:
       VpcId: !Ref VPC
       SecurityGroupIngress:
         - IpProtocol: tcp
+          FromPort: 8188
+          ToPort: 8188
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
           FromPort: 8088
-          ToPort: 8088
+          ToPort: 8089
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 8889
+          ToPort: 8889
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 8000
+          ToPort: 8000
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 7088
+          ToPort: 7089
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: udp
+          FromPort: 10000
+          ToPort: 10100
           CidrIp: 0.0.0.0/0
         - IpProtocol: tcp
           FromPort: 22
@@ -73,11 +92,47 @@ Resources:
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 3478
-          ToPort: 3478
+          ToPort: 3479
           CidrIp: 0.0.0.0/0
         - IpProtocol: udp
           FromPort: 3478
-          ToPort: 3478
+          ToPort: 3479
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: udp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 5349
+          ToPort: 5350
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: udp
+          FromPort: 5349
+          ToPort: 5350
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: udp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 5766
+          ToPort: 5766
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 49152
+          ToPort: 65535
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: udp
+          FromPort: 49152
+          ToPort: 65535
           CidrIp: 0.0.0.0/0
         - IpProtocol: tcp
           FromPort: 22
@@ -86,16 +141,6 @@ Resources:
       SecurityGroupEgress:
         - IpProtocol: -1
           CidrIp: 0.0.0.0/0
-  JanusServerElasticIp:
-    Type: AWS::EC2:EIP
-    Properties:
-      Domain: vpc
-      InstanceId: !Ref JanusServer
-  CoturnServerElasticIp:
-    Type: AWS::EC2::EIP
-    Properties:
-      Domain: vpc
-      InstanceId: !Ref CoturnServer
   JanusServer:
     Type: AWS::EC2::Instance
     Properties:
@@ -148,26 +193,41 @@ Resources:
   BucketPolicy:
     Type: AWS::S3::BucketPolicy
     Properties:
-      Bucket: !Ref Bucket
+      Bucket: !Ref AppBucket
       PolicyDocument:
         Statement:
           - Action:
               - s3:GetObject
             Effect: Allow
-            Resource: !Join ['', ['arn:aws:s3:::', !Ref Bucket, '/*']]
+            Resource: !Join ['', ['arn:aws:s3:::', !Ref AppBucket, '/*']]
             Principal:
               CanonicalUser: !GetAtt CloudFrontOriginAccessIdentity.S3CanonicalUserId
   CloudFrontOriginAccessIdentity:
     Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
     Properties:
       CloudFrontOriginAccessIdentityConfig:
-        Comment: !Sub 'CloudFront OAI for WebRTC Networking Demo'
+        Comment: 'CloudFront OAI for WebRTC Networking Demo'
   CloudfrontDistribution:
     Type: AWS::CloudFront::Distribution
     Properties:
       DistributionConfig:
         CacheBehaviors:
           - PathPattern: /janus
+            AllowedMethods:
+              - "GET"
+              - "HEAD"
+              - "OPTIONS"
+              - "PUT"
+              - "PATCH"
+              - "POST"
+              - "DELETE"
+            CachedMethods:
+              - "HEAD"
+              - "GET"
+            TargetOriginId: janus-server
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+            ViewerProtocolPolicy: redirect-to-https
+          - PathPattern: /janus/*
             AllowedMethods:
               - "GET"
               - "HEAD"
@@ -206,7 +266,7 @@ Resources:
             S3OriginConfig:
               OriginAccessIdentity:
                 !Join ['', ['origin-access-identity/cloudfront/', !Ref CloudFrontOriginAccessIdentity]]
-          - DomainName: !Join ['', ['http://', !GetAtt JanusServer.PublicIp]]
+          - DomainName: !GetAtt JanusServer.PublicDnsName
             Id: janus-server
             CustomOriginConfig:
               HTTPPort: 8088
@@ -215,3 +275,13 @@ Resources:
       Tags:
         - Key: Name
           Value: CloudFrount Distribution - WebRTC Networking Demo
+
+Outputs:
+  AppUrl: 
+    Value: !GetAtt CloudfrontDistribution.DomainName
+  JanusServerIp:
+    Value: !GetAtt JanusServer.PublicIp
+  CoturnServerIp:
+    Value: !GetAtt CoturnServer.PublicIp
+  S3BucketName:
+    Value: !Ref AppBucket
