@@ -1,44 +1,36 @@
-.App {
+#container {
+  margin: auto
+}
+
+#form {
+  margin: auto;
+  margin-top: 20%;
   text-align: center;
 }
 
-.gameContainer {
-  width: 100vw;
-  height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  column-count: 2;
-  column-gap: 100px;
+.janus-container {
+  margin: auto;
 }
 
-.board {
-  width: 500px;
-  height: 500px;
-  background-color: rgb(252, 252, 252);
-  border: 1px solid black;
-  display: flex;
-  flex-direction: column;
-}
-
-.row {
-  flex: 33%;
-  display: flex;
-  flex-direction: row;
-}
-
-.square {
-  flex: 33%;
-  height: 100%;
-  border: 1px solid black;
-  cursor: pointer;
+.grid-container {
   display: grid;
-  place-items: center;
-  font-size: 30px;
-  color: black;
-  font-family: Arial, Helvetica, sans-serif;
+  grid-template-columns: auto auto auto auto;
 }
 
-.square:active {
-  background-color: lightgray;
+.janus-video video {
+  width: 320px;
+  height: 240px;
+}
+
+input {
+  display: block;
+  margin: auto;
+  width: 20%;
+  padding: 12px 20px;
+  margin-bottom: 25px;
+}
+
+button {
+  width: 10%;
+  padding: 6px 10px;
 }

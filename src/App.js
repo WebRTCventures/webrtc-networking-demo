@@ -11,7 +11,7 @@ function App() {
     if (room && username) setInCall(true);
   }
   return (
-    <>
+    <div id="container">
       {inCall ? (
         <>
           <VideoCall 
@@ -20,7 +20,7 @@ function App() {
             setInCall={setInCall}/>
         </>
       ) : (
-        <>
+        <div id="form">
           <input 
             type='text' 
             placeholder='Enter Room Number' 
@@ -32,9 +32,9 @@ function App() {
             value={username} 
             onChange={(evt) => setUsername(evt.target.value)} />
           <button onClick={handleJoinCall}>Join Call</button>
-        </>
+        </div>
       )}
-    </>
+    </div>
   );
 }
 
