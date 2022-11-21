@@ -39,7 +39,6 @@ function JanusPublisher({
         break;
       case 'onlocaltrack':
         mystream = data;
-        console.log('DEBUG', mystream);
         const videoContainer = videoArea.current;
         const videoPlayer = videoContainer.querySelector(".janus-video-player");
 

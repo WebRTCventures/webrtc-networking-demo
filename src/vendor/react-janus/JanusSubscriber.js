@@ -51,7 +51,6 @@ function JanusSubscriber ({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [janus, room, pubId, pubPvtId, remotePublishers]);
 
-  console.log('DEBUG: ', remotePublishers);
   return (
     Array.isArray(remotePublishers) && remotePublishers.map((publisher, i) => {
       return (
