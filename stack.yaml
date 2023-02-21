@@ -271,6 +271,7 @@ Resources:
             CustomOriginConfig:
               HTTPPort: 8088
               OriginProtocolPolicy: 'http-only'
+              OriginReadTimeout: 45
         PriceClass: 'PriceClass_100'
       Tags:
         - Key: Name
